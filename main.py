@@ -54,7 +54,7 @@ class Ball():
 
         self.shape = pymunk.Circle(self.body, ball_radius)
         self.shape.density = 25
-        self.shape.elasticity = 1
+        self.shape.elasticity = 0.9
         self.shape.collision_type = 1
 
         self.shape.label = label
@@ -90,7 +90,7 @@ class Bound():
         self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
 
         self.shape = pymunk.Segment(self.body, (x0, y0), (x1, y1), 2.5)
-        self.shape.elasticity = 1
+        self.shape.elasticity = 0.8
 
         space.add(self.body, self.shape)
 
@@ -112,7 +112,7 @@ class Pocket():
     def draw(self):
         x, y = self.body.position
         pygame.draw.circle(display, (0, 0, 0), mtog(x, y), pocket_radius)
-        pygame.draw.circle(display, (0, 255, 0), mtog(x, y), pocket_radius - ball_radius) # critical region
+        #pygame.draw.circle(display, (0, 255, 0), mtog(x, y), pocket_radius - ball_radius) # critical region
 
 def collide(arbiter, space, data):
     a, b = arbiter.shapes
@@ -156,13 +156,13 @@ def sim():
     handler = space.add_collision_handler(1, 2)
     handler.begin = collide
 
-    p1_cue_ball.body.apply_impulse_at_local_point((1000000,0),(1,0))
+    p1_cue_ball.body.apply_impulse_at_local_point((1000000,0),(0,0))
 
     while True:
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+            
         display.fill((255, 255, 255))
 
         pygame.draw.rect(display, (0, 0, 0), pygame.Rect(d_width//2 - t_width//2 - bezel - 5, d_height//2 - t_height//2 - bezel - 5, t_width + bezel * 2 + 10, t_height + bezel * 2 + 10))
@@ -178,7 +178,16 @@ def sim():
 
         pygame.display.update()
         clock.tick(FPS * sim_speed)
+
         for _ in range(sim_speed):
+            for ball in [p1_cue_ball, p2_cue_ball] + balls:
+
+                friction_force = (ball.body.mass * 9.81) * 0.8
+                dir = -pymunk.Vec2d.normalized(ball.body.velocity)
+                ball.body.apply_force_at_local_point((friction_force * dir.x, friction_force * dir.y), (0,0))
+
+
+
             space.step(1/(FPS * sim_speed))
 
 sim()
