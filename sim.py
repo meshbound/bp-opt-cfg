@@ -38,6 +38,12 @@ BALL_RADIUS = 7
 P1_BOUNDS = ((BALL_RADIUS, BALL_RADIUS), (3*TABLE_WIDTH//8, TABLE_HEIGHT - BALL_RADIUS))
 P2_BOUNDS = ((5*TABLE_WIDTH//8, BALL_RADIUS), (TABLE_WIDTH - BALL_RADIUS, TABLE_HEIGHT - BALL_RADIUS))
 
+P1_SHOOT_BOUNDS = ((BALL_RADIUS, BALL_RADIUS), (TABLE_WIDTH//8, TABLE_HEIGHT - BALL_RADIUS))
+P2_SHOOT_BOUNDS = ((7*TABLE_WIDTH//8, BALL_RADIUS), (TABLE_WIDTH - BALL_RADIUS, TABLE_HEIGHT - BALL_RADIUS))
+
+BALL_ELASTICITY = 0.9
+BOUND_ELASTICITY = 0.8
+
 # sim
 SIM_SPEED = 1
 FPS=60
@@ -73,8 +79,9 @@ class Ball():
         # shape
         self.shape = pymunk.Circle(self.body, BALL_RADIUS)
         self.shape.density = 25
-        self.shape.elasticity = 0.9
+        self.shape.elasticity = BALL_ELASTICITY
         self.shape.collision_type = 1
+        self.shape.filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS ^ 0b10)
 
         # custom
         self.shape.custom = {
@@ -123,7 +130,7 @@ class Bound():
 
         # shpae
         self.shape = pymunk.Segment(self.body, start, end, TRIM_RADIUS)
-        self.shape.elasticity = 0.8
+        self.shape.elasticity = BOUND_ELASTICITY
 
         # custom
         self.shape.custom = {
@@ -216,7 +223,7 @@ class Sim():
             ]
         }
 
-        self.players = ['p1', 'p2']
+        self.turn = 'p1'
 
         handler = self.space.add_collision_handler(1, 2)
         handler.begin = self.collide
@@ -224,28 +231,23 @@ class Sim():
     def collide(self, arbiter, space, data):
         ball, bound = arbiter.shapes
         print(ball.custom['label'], bound.custom['label'])
+        ball.filter = pymunk.ShapeFilter(categories=0b10)
 
         return True
 
-    def reflect(self, ray, hit, n):
-        # where vec is the vec that hit this surface, hit is the hitinfo, reflect is the number of remaining relections
-        #if reflect > 0
-
-        if n == 0:
-            return ray, hit
-
+    def reflect(self, ray, hit):
         CAST_LEN = 10000
 
         norm = np.array([hit.normal.x, hit.normal.y])
-        pos = np.array([hit.point.x, hit.point.y])
+        pos = np.array([hit.point.x, hit.point.y]) + norm * BALL_RADIUS
         ray /= np.linalg.norm(ray)
 
-        v = ray - 2*(np.dot(ray, norm))*norm
+        v = ray - (1+BALL_ELASTICITY*BOUND_ELASTICITY)*(np.dot(ray, norm))*norm
         v /= np.linalg.norm(v)
 
         r_v = np.array([v[1] * BALL_RADIUS, -v[0] * BALL_RADIUS])
 
-        filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS())
+        filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^0b10)
 
         mid_start = tuple(pos)
         mid_end = tuple(pos + v*CAST_LEN)
@@ -259,27 +261,38 @@ class Sim():
         bottom_end = tuple(pos - r_v + v*CAST_LEN)
         bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
 
-        print(mid_hit.point)
-
-        flag = False
+        point = None
         if top_hit:
-            if top_hit.shape != None:
-                if top_hit.shape.collision_type == 1:
-                    flag = True
-        
-        if not flag and bottom_hit:
-            if bottom_hit.shape != None:
-                if bottom_hit.shape.collision_type == 1:
-                    flag = True
+            top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+            point = top_point
+        if bottom_hit:
+            bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+            if self.turn == 'p2':
+                if point is None or (point is not None and bottom_point[0] < point[0]): # need to change for current player
+                    point = bottom_point
+            else:
+                if point is None or (point is not None and bottom_point[0] > point[0]): # need to change for current player
+                    point = bottom_point
+        if mid_hit:
+            if self.turn == 'p2':
+                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y]) # need to change for current player
+                if point is None or (point is not None and mid_point[0] < point[0]): # need to change for current player
+                    point = mid_point
+            else:
+                mid_point = np.array([mid_hit.point.x + BALL_RADIUS, mid_hit.point.y]) # need to change for current player
+                if point is None or (point is not None and mid_point[0] > point[0]): # need to change for current player
+                    point = mid_point
 
-        if not flag and mid_hit:
-            if mid_hit.shape != None:
-                if mid_hit.shape.collision_type != 1:
-                    return self.reflect(v, mid_hit, n - 1)
-                
+        if self.turn == 'p2':
+            if point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]: # need to change for current player
+                return v, point
+        else:
+            if point is not None and point[0] < stom(P1_SHOOT_BOUNDS[1])[0]: # need to change for current player
+                return v, point
+        
         return None, None
 
-    def scan(self, ball): # solve for an input
+    def scan(self, ball, player_ball): # solve for an input
 
         CAST_LEN = 10000
 
@@ -287,64 +300,98 @@ class Sim():
         bounces = 0 # start with 0 bounces, then 1 bounce allowed, up to 2
 
         prev_filter = ball.shape.filter
+        prev_player_filter = player_ball.shape.filter
+
         ball.shape.filter = pymunk.ShapeFilter(categories=0b10)
+        player_ball.shape.filter = pymunk.ShapeFilter(categories=0b10)
 
-        while theta <= 2*np.pi:
-            pos = ball.body.position
-            filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^0b10)
+        while bounces <= 2:
+            while theta <= 2*np.pi:
+                pos = ball.body.position
+                filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^0b10)
 
-            v = np.array([np.cos(theta), np.sin(theta)])
-            r_v = np.array([v[1] * BALL_RADIUS, -v[0] * BALL_RADIUS])
+                v = np.array([np.cos(theta), np.sin(theta)])
+                r_v = np.array([v[1] * BALL_RADIUS, -v[0] * BALL_RADIUS])
 
-            mid_start = pos
-            mid_end = pos + v*CAST_LEN
-            mid_hit = self.space.segment_query_first(mid_start, mid_end, 1, filter)
+                mid_start = pos
+                mid_end = pos + v*CAST_LEN
+                mid_hit = self.space.segment_query_first(mid_start, mid_end, 1, filter)
 
-            top_start = pos + r_v
-            top_end = pos + r_v + v*CAST_LEN
-            top_hit = self.space.segment_query_first(top_start, top_end, 1, filter)
+                top_start = pos + r_v
+                top_end = pos + r_v + v*CAST_LEN
+                top_hit = self.space.segment_query_first(top_start, top_end, 1, filter)
 
-            bottom_start = pos - r_v
-            bottom_end = pos - r_v + v*CAST_LEN
-            bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
+                bottom_start = pos - r_v
+                bottom_end = pos - r_v + v*CAST_LEN
+                bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
 
-            flag = False
-            if top_hit:
-                if top_hit.shape != None:
-                    if top_hit.shape.collision_type == 1:
-                        flag = True
-            
-            if not flag and bottom_hit:
-                if bottom_hit.shape != None:
-                    if bottom_hit.shape.collision_type == 1:
-                        flag = True
+                point = None
+                can_reflect = True
 
-            if not flag and mid_hit:
-                if mid_hit.shape != None:
-                    if mid_hit.shape.collision_type != 1:
-                        ball.shape.filter = prev_filter
-                        return theta, mid_hit
+                if top_hit:
+                    if top_hit.shape and top_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                    point = top_point
+                if bottom_hit:
+                    if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                    if self.turn == 'p2':
+                        if point is None or (point is not None and bottom_point[0] < point[0]): # need to change for current player
+                            point = bottom_point
+                    else:
+                        if point is None or (point is not None and bottom_point[0] > point[0]): # need to change for current player
+                            point = bottom_point
+                if mid_hit:
+                    if mid_hit.shape and mid_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    if self.turn == 'p2':
+                        mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y]) # need to change for current player
+                        if point is None or (point is not None and mid_point[0] < point[0]): # need to change for current player
+                            point = mid_point
+                    else:
+                        mid_point = np.array([mid_hit.point.x + BALL_RADIUS, mid_hit.point.y]) # need to change for current player
+                        if point is None or (point is not None and mid_point[0] > point[0]): # need to change for current player
+                            point = mid_point
 
-            theta += np.pi/16
+                print(point, P2_SHOOT_BOUNDS[0][0], top_hit.point if top_hit else 'x', bottom_hit.point if bottom_hit else 'x', mid_hit.point if mid_hit else 'x')
+                
+                if self.turn == 'p2' and point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]: # need to change for current player
+                    ball.shape.filter = prev_filter
+                    player_ball.shape.filter = prev_player_filter
+                    return v, point
+                elif self.turn == 'p1' and point is not None and point[0] < stom(P1_SHOOT_BOUNDS[1])[0]:
+                    ball.shape.filter = prev_filter
+                    player_ball.shape.filter = prev_player_filter
+                    return v, point
+                else:
+                    if can_reflect and mid_hit:
+                        v, reflect_point = self.reflect(v, mid_hit)
+
+                        if reflect_point is not None:
+                            ball.shape.filter = prev_filter
+                            player_ball.shape.filter = prev_player_filter
+                            return v, reflect_point
+                theta += np.pi/32
+            bounces += 1
         
         ball.shape.filter = prev_filter
-        return -1, None
+        player_ball.shape.filter = prev_player_filter
+        return None, None
 
     def move(self, pos, theta, power, placements):
         #print(theta)
 
-        ball = self.geometry['balls'][0]
+        ball = self.geometry['balls'][12] # 3 ball
+        player_ball = self.geometry['balls'][0]
 
-        theta, hit = self.scan(ball)
+        v, point = self.scan(ball, player_ball)
+        impulse = (-v[0] * 1000000, -v[1] * 1000000)
 
-        impulse = (np.cos(theta) * 1000000, np.sin(theta) * 1000000)
+        player_ball.body.position = (point[0], point[1] + 0.5) # use a small random offset for the y direction
 
-        test_ray, test_hit = self.reflect(impulse, hit, 1)
-
-        ball.body.apply_impulse_at_local_point(impulse,(0,0))
-
-
-
+        player_ball.body.apply_impulse_at_local_point(impulse,(0,0))
 
         while True:
             if self.draw:
@@ -377,24 +424,13 @@ class Sim():
 
                 for group in self.geometry:
                     for obj in self.geometry[group]:
-                        #if group == 'balls':
-                        #    if obj.shape.custom['sunk'] != None:
-                        #        continue
+                        if group == 'balls':
+                            if obj.shape.custom['sunk'] != None:
+                                continue
                         obj.draw(self.display)
 
-
-                # TODO: just messing around
-                if True:
-                #    pygame.draw.line(self.display, (255,0,0), mtog(pos[0], pos[1]), mtog(point[0], point[1]), 1)
-                #    pygame.draw.line(self.display, (0, 0, 255), mtog(point[0], point[1]), mtog(point[0] + norm[0] * 10, point[1] + norm[1] * 10))
-
-                    print(mtog(test_hit.point[0], test_hit.point[1]), test_hit.shape)
-                    pygame.draw.line(self.display, (255,0,0), mtog(test_hit.point[0], test_hit.point[1]), mtog(test_hit.point[0] + test_ray[0], test_hit.point[1] + test_ray[1]), 1)
-                #    vec = point - pos
-
-                    #r =
-
-                    #print(math.degrees(math.pi - norm.get_angle_between(vec)))
+                        if point is not None:
+                            pygame.draw.circle(self.display, (255, 0, 0), mtog(point[0], point[1]), 5)
 
                 pygame.display.update()
                 self.clock.tick(FPS * SIM_SPEED)
@@ -419,7 +455,6 @@ class Sim():
                         break
                 if delta:
                     break
-            
             if not delta:
                 break
         
@@ -473,8 +508,6 @@ def run():
 
 '''
     TODO
-    - allow to init with sunk balls
-    - include turns
-    - move should include a dict with placement positions for balls sunk in middle
-    - implement mutliple shots if you knock ball in outer pockets / scratches
+    - now we are only going to do the more niave approach
+    - clean up code a lot
 '''
