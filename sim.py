@@ -70,6 +70,10 @@ def stom(pos):
     x, y = pos
     return (WINDOW_WIDTH//2 - TABLE_WIDTH//2 + x, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 + y)
 
+def mtos(pos):
+    x, y = pos
+    return (-WINDOW_WIDTH//2 + TABLE_WIDTH//2 + x, -WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + y)
+
 class Ball():
     def __init__(self, space, pos, color = (255, 255, 255), draw_stripe = False, draw_label = False, label = '', sunk = None):
         # body
@@ -81,7 +85,6 @@ class Ball():
         self.shape.density = 25
         self.shape.elasticity = BALL_ELASTICITY
         self.shape.collision_type = 1
-        self.shape.filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS ^ 0b10)
 
         # custom
         self.shape.custom = {
@@ -175,7 +178,7 @@ class Pocket():
         pygame.draw.circle(display, (0, 0, 0), mtog(x, y), POCKET_RADIUS)
         #pygame.draw.circle(display, (0, 255, 0), mtog(x, y), POCKET_RADIUS - BALL_RADIUS) # critical region     
 
-class Sim():
+class Simulation():
     def __init__(self, state, draw=False):
         self.clock = pygame.time.Clock()
         self.space = pymunk.Space()
@@ -225,14 +228,21 @@ class Sim():
 
         self.turn = 'p1'
 
-        handler = self.space.add_collision_handler(1, 2)
-        handler.begin = self.collide
+        pocket_handler = self.space.add_collision_handler(1, 2)
+        pocket_handler.begin = self.pocket_collide
 
-    def collide(self, arbiter, space, data):
+        ball_handler = self.space.add_collision_handler(1, 1)
+        ball_handler.begin = self.ball_collide
+
+    def pocket_collide(self, arbiter, space, data):
         ball, bound = arbiter.shapes
-        print(ball.custom['label'], bound.custom['label'])
-        ball.filter = pymunk.ShapeFilter(categories=0b10)
-
+        ball.custom['sunk'] = bound.custom['label']
+        return True
+    
+    def ball_collide(self, arbiter, space, data):
+        ball_a, ball_b = arbiter.shapes
+        if ball_a.custom['sunk'] != None or ball_b.custom['sunk'] != None:
+            return False
         return True
 
     def reflect(self, ray, hit):
@@ -267,37 +277,22 @@ class Sim():
             point = top_point
         if bottom_hit:
             bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
-            if self.turn == 'p2':
-                if point is None or (point is not None and bottom_point[0] < point[0]): # need to change for current player
-                    point = bottom_point
-            else:
-                if point is None or (point is not None and bottom_point[0] > point[0]): # need to change for current player
-                    point = bottom_point
+            if point is None or (point is not None and bottom_point[0] < point[0]):
+                point = bottom_point
         if mid_hit:
-            if self.turn == 'p2':
-                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y]) # need to change for current player
-                if point is None or (point is not None and mid_point[0] < point[0]): # need to change for current player
-                    point = mid_point
-            else:
-                mid_point = np.array([mid_hit.point.x + BALL_RADIUS, mid_hit.point.y]) # need to change for current player
-                if point is None or (point is not None and mid_point[0] > point[0]): # need to change for current player
-                    point = mid_point
+            mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+            if point is None or (point is not None and mid_point[0] < point[0]):
+                point = mid_point
 
-        if self.turn == 'p2':
-            if point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]: # need to change for current player
-                return v, point
-        else:
-            if point is not None and point[0] < stom(P1_SHOOT_BOUNDS[1])[0]: # need to change for current player
-                return v, point
+        if point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]:
+            return v, point
         
         return None, None
 
-    def scan(self, ball, player_ball): # solve for an input
-
+    def scan(self, ball, player_ball):
         CAST_LEN = 10000
 
         theta = 0
-        bounces = 0 # start with 0 bounces, then 1 bounce allowed, up to 2
 
         prev_filter = ball.shape.filter
         prev_player_filter = player_ball.shape.filter
@@ -305,135 +300,75 @@ class Sim():
         ball.shape.filter = pymunk.ShapeFilter(categories=0b10)
         player_ball.shape.filter = pymunk.ShapeFilter(categories=0b10)
 
-        while bounces <= 2:
-            while theta <= 2*np.pi:
-                pos = ball.body.position
-                filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^0b10)
+        while theta <= 2*np.pi:
+            pos = ball.body.position
+            filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^0b10)
 
-                v = np.array([np.cos(theta), np.sin(theta)])
-                r_v = np.array([v[1] * BALL_RADIUS, -v[0] * BALL_RADIUS])
+            v = np.array([np.cos(theta), np.sin(theta)])
+            r_v = np.array([v[1] * BALL_RADIUS, -v[0] * BALL_RADIUS])
 
-                mid_start = pos
-                mid_end = pos + v*CAST_LEN
-                mid_hit = self.space.segment_query_first(mid_start, mid_end, 1, filter)
+            mid_start = pos
+            mid_end = pos + v*CAST_LEN
+            mid_hit = self.space.segment_query_first(mid_start, mid_end, 1, filter)
 
-                top_start = pos + r_v
-                top_end = pos + r_v + v*CAST_LEN
-                top_hit = self.space.segment_query_first(top_start, top_end, 1, filter)
+            top_start = pos + r_v
+            top_end = pos + r_v + v*CAST_LEN
+            top_hit = self.space.segment_query_first(top_start, top_end, 1, filter)
 
-                bottom_start = pos - r_v
-                bottom_end = pos - r_v + v*CAST_LEN
-                bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
+            bottom_start = pos - r_v
+            bottom_end = pos - r_v + v*CAST_LEN
+            bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
 
-                point = None
-                can_reflect = True
+            point = None
+            can_reflect = True
 
-                if top_hit:
-                    if top_hit.shape and top_hit.shape.collision_type == 1:
-                        can_reflect = False
-                    top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
-                    point = top_point
-                if bottom_hit:
-                    if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
-                        can_reflect = False
-                    bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
-                    if self.turn == 'p2':
-                        if point is None or (point is not None and bottom_point[0] < point[0]): # need to change for current player
-                            point = bottom_point
-                    else:
-                        if point is None or (point is not None and bottom_point[0] > point[0]): # need to change for current player
-                            point = bottom_point
-                if mid_hit:
-                    if mid_hit.shape and mid_hit.shape.collision_type == 1:
-                        can_reflect = False
-                    if self.turn == 'p2':
-                        mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y]) # need to change for current player
-                        if point is None or (point is not None and mid_point[0] < point[0]): # need to change for current player
-                            point = mid_point
-                    else:
-                        mid_point = np.array([mid_hit.point.x + BALL_RADIUS, mid_hit.point.y]) # need to change for current player
-                        if point is None or (point is not None and mid_point[0] > point[0]): # need to change for current player
-                            point = mid_point
+            if top_hit:
+                if top_hit.shape and top_hit.shape.collision_type == 1:
+                    can_reflect = False
+                top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                point = top_point
+            if bottom_hit:
+                if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
+                    can_reflect = False
+                bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                if point is None or (point is not None and bottom_point[0] < point[0]):
+                    point = bottom_point
+            if mid_hit:
+                if mid_hit.shape and mid_hit.shape.collision_type == 1:
+                    can_reflect = False
+                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+                if point is None or (point is not None and mid_point[0] < point[0]):
+                    point = mid_point
+            
+            if point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]:
+                ball.shape.filter = prev_filter
+                player_ball.shape.filter = prev_player_filter
+                return v, point
+            else:
+                if can_reflect and mid_hit:
+                    v, reflect_point = self.reflect(v, mid_hit)
 
-                print(point, P2_SHOOT_BOUNDS[0][0], top_hit.point if top_hit else 'x', bottom_hit.point if bottom_hit else 'x', mid_hit.point if mid_hit else 'x')
-                
-                if self.turn == 'p2' and point is not None and point[0] > stom(P2_SHOOT_BOUNDS[0])[0]: # need to change for current player
-                    ball.shape.filter = prev_filter
-                    player_ball.shape.filter = prev_player_filter
-                    return v, point
-                elif self.turn == 'p1' and point is not None and point[0] < stom(P1_SHOOT_BOUNDS[1])[0]:
-                    ball.shape.filter = prev_filter
-                    player_ball.shape.filter = prev_player_filter
-                    return v, point
-                else:
-                    if can_reflect and mid_hit:
-                        v, reflect_point = self.reflect(v, mid_hit)
-
-                        if reflect_point is not None:
-                            ball.shape.filter = prev_filter
-                            player_ball.shape.filter = prev_player_filter
-                            return v, reflect_point
-                theta += np.pi/32
-            bounces += 1
+                    if reflect_point is not None:
+                        ball.shape.filter = prev_filter
+                        player_ball.shape.filter = prev_player_filter
+                        return v, reflect_point
+            theta += np.pi/32
         
         ball.shape.filter = prev_filter
         player_ball.shape.filter = prev_player_filter
         return None, None
 
-    def move(self, pos, theta, power, placements):
-        #print(theta)
+    def move(self, dir, origin, power):
+        player_ball = self.geometry['balls'][1]
 
-        ball = self.geometry['balls'][12] # 3 ball
-        player_ball = self.geometry['balls'][0]
+        impulse = (-dir[0] * power, -dir[1] * power)
 
-        v, point = self.scan(ball, player_ball)
-        impulse = (-v[0] * 1000000, -v[1] * 1000000)
-
-        player_ball.body.position = (point[0], point[1] + 0.5) # use a small random offset for the y direction
-
+        player_ball.body.position = (origin[0], origin[1] + 0.5) # use a small random offset for the y direction
         player_ball.body.apply_impulse_at_local_point(impulse,(0,0))
 
         while True:
             if self.draw:
-                self.display.fill((255, 255, 255))
-                pygame.draw.rect(self.display, (0, 0, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL - 5, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL - 5, TABLE_WIDTH + TABLE_BEZEL * 2 + 10, TABLE_HEIGHT + TABLE_BEZEL * 2 + 10))
-                pygame.draw.rect(self.display, (101, 67, 33), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL, TABLE_WIDTH + TABLE_BEZEL * 2, TABLE_HEIGHT + TABLE_BEZEL * 2))
-                pygame.draw.rect(self.display, (0, 128, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2, TABLE_WIDTH, TABLE_HEIGHT))
-
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
-
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
-                pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
-
-                for group in self.geometry:
-                    for obj in self.geometry[group]:
-                        if group == 'balls':
-                            if obj.shape.custom['sunk'] != None:
-                                continue
-                        obj.draw(self.display)
-
-                        if point is not None:
-                            pygame.draw.circle(self.display, (255, 0, 0), mtog(point[0], point[1]), 5)
-
-                pygame.display.update()
-                self.clock.tick(FPS * SIM_SPEED)
+                self.render()
 
             for _ in range(SIM_SPEED):
                 for group in self.geometry:
@@ -462,18 +397,96 @@ class Sim():
         for ball in self.geometry['balls']:
             state[ball.shape.custom['label']] = {
                 'sunk' : ball.shape.custom['sunk'],
-                'pos' : (ball.body.position.x, ball.body.position.y)
+                'pos' : mtos((ball.body.position.x, ball.body.position.y))
             }
 
         return state
+
+    def actions(self):
+        player_ball = self.geometry['balls'][1] # p2
+
+        # get the discrete points: all non-sunk balls not on the players side
+        balls = []
+        for ball in self.geometry['balls']:
+            if ball.shape.custom['label'] in ['p1', 'p2']:
+                continue
+            if ball.shape.custom['sunk'] != None:
+                continue
+            if ball.body.position[0] < stom(P2_BOUNDS[0])[0]:
+                balls.append(ball)
+
+        pois = []
+        for ball in balls:
+            v, point = self.scan(ball, player_ball)
+            if v is None:
+                continue
+            pois.append((v,point))
+
+        return pois
+
+    def render(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
             
+        self.display.fill((255, 255, 255))
+        pygame.draw.rect(self.display, (0, 0, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL - 5, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL - 5, TABLE_WIDTH + TABLE_BEZEL * 2 + 10, TABLE_HEIGHT + TABLE_BEZEL * 2 + 10))
+        pygame.draw.rect(self.display, (101, 67, 33), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL, TABLE_WIDTH + TABLE_BEZEL * 2, TABLE_HEIGHT + TABLE_BEZEL * 2))
+        pygame.draw.rect(self.display, (0, 128, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2, TABLE_WIDTH, TABLE_HEIGHT))
+
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
+
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
+
+        for group in self.geometry:
+            for obj in self.geometry[group]:
+                if group == 'balls':
+                    if obj.shape.custom['sunk'] != None:
+                        continue
+                obj.draw(self.display)
+
+        pygame.display.update()
+        self.clock.tick(FPS * SIM_SPEED)
+
 def random_pos(p1):
     (x0, y0), (x1, y1) = P1_BOUNDS if p1 else P2_BOUNDS
     return (x0 + random.random() * (x1 - x0), y0 + random.random() * (y1 - y0))
 
+def eval(state):
+    score = 0
+    for ball in state:
+        if ball in ['p1', 'p2']:
+            continue
+        if state[ball]['sunk'] == None:
+            pos = state[ball]['pos']
+            if pos[0] > P2_BOUNDS[0][0]:
+                score -= 1
+            elif pos[0] < P1_BOUNDS[1][0]:
+                score += 1
+    return score
+
 def run():
     init_state = {
-        'p1' : {'sunk': None, 'pos': random_pos(True)},
+        'p1' : {'sunk': True, 'pos': random_pos(True)},
         'p2' : {'sunk': None, 'pos': random_pos(False)},
         '1' : {'sunk': None, 'pos': random_pos(True)},
         '2' : {'sunk': None, 'pos': random_pos(True)},
@@ -491,7 +504,9 @@ def run():
         '15' : {'sunk': None, 'pos': random_pos(False)}
     }
     
-    sim = Sim(init_state, draw=True)
+    sim = Simulation(init_state, draw=True)
+
+    #pretty_print_state(init_state)
 
     while True:
         for event in pygame.event.get():
@@ -499,15 +514,19 @@ def run():
                 pygame.quit()
                 return
                 
-        state = sim.move(None, None, None, None)
+        state = sim.move(None, None)
         #pretty_print_state(state)
 
         for label in state:
             if state[label]['sunk'] is not None:
                 print(label)
 
+        #pretty_print_state(state)
+        print(p2_eval(state))
+
 '''
     TODO
     - now we are only going to do the more niave approach
-    - clean up code a lot
+    - explore: inital breaks with discretization vs kernel
+    - tuning hyperparameters of evoluionary algorithim
 '''
