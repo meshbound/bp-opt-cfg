@@ -38,10 +38,9 @@ class Simulation():
             return False
         return True
 
-    def __init__(self, state, draw=False):
+    def __init__(self, draw=False):
         self.space = pymunk.Space()
         self.draw = draw
-        self.turn = 'p1'
 
         self.geometry = {
             'bounds': [
@@ -61,24 +60,24 @@ class Simulation():
                 Pocket(self.space, (WINDOW_WIDTH//2 + TABLE_WIDTH//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2), 'Bottom Right')
             ],
             'balls': [
-                Ball(self.space, Simulation.state_to_pymunk(state['p1']['pos']), label='p1', sunk=state['p1']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['p2']['pos']), label='p2', sunk=state['p2']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='p1', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='p2', sunk=None),
 
-                Ball(self.space, Simulation.state_to_pymunk(state['1']['pos']), label='1', sunk=state['1']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['2']['pos']), label='2', sunk=state['2']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['3']['pos']), label='3', sunk=state['3']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['4']['pos']), label='4', sunk=state['4']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['5']['pos']), label='5', sunk=state['5']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['6']['pos']), label='6', sunk=state['6']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['7']['pos']), label='7', sunk=state['7']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='1', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='2', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='3', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='4', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='5', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='6', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(True)), label='7', sunk=None),
 
-                Ball(self.space, Simulation.state_to_pymunk(state['9']['pos']), label='9', sunk=state['9']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['10']['pos']), label='10', sunk=state['10']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['11']['pos']), label='11', sunk=state['11']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['12']['pos']), label='12', sunk=state['12']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['13']['pos']), label='13', sunk=state['13']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['14']['pos']), label='14', sunk=state['14']['sunk']),
-                Ball(self.space, Simulation.state_to_pymunk(state['15']['pos']), label='15', sunk=state['15']['sunk'])
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='9', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='10', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='11', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='12', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='13', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='14', sunk=None),
+                Ball(self.space, Simulation.state_to_pymunk(random_pos(False)), label='15', sunk=None)
             ]
         }
 
@@ -201,8 +200,81 @@ class Simulation():
         player_ball.shape.filter = prev_player_filter
         return None, None
 
-    def move(self, dir, origin, power):
-        player_ball = self.geometry['balls'][1]
+    def actions(self, state):
+        for ball_label in state:
+            ball = self.get_ball(ball_label)
+            ball.shape.custom['sunk'] = state[ball_label]['sunk']
+            ball.body.position = self.state_to_pymunk(state[ball_label]['pos'])
+            ball.body.velocity = (0,0)
+
+        player_ball = self.geometry['balls'][1] # p2
+
+        # get the discrete points: all non-sunk balls not on the players side
+        balls = []
+        for ball in self.geometry['balls']:
+            if ball.shape.custom['label'] in ['p1', 'p2']:
+                continue
+            if ball.shape.custom['sunk'] != None:
+                continue
+            if ball.body.position[0] < Simulation.state_to_pymunk(P2_BOUNDS[0])[0]:
+                balls.append(ball)
+
+        pois = []
+        for ball in balls:
+            v, point = self.scan(ball, player_ball)
+            if v is None:
+                continue
+            pois.append((v,point))
+
+        return pois
+
+    def get_ball(self, label):
+        for ball in self.geometry['balls']:
+            if ball.shape.custom['label'] == label:
+                return ball
+        return None
+
+    def move(self, init_state, player, dir, origin, power):
+        # set the state to mimic init_state
+        '''
+        'balls': [
+                Ball(self.space, Simulation.state_to_pymunk(state['p1']['pos']), label='p1', sunk=state['p1']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['p2']['pos']), label='p2', sunk=state['p2']['sunk']),
+
+                Ball(self.space, Simulation.state_to_pymunk(state['1']['pos']), label='1', sunk=state['1']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['2']['pos']), label='2', sunk=state['2']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['3']['pos']), label='3', sunk=state['3']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['4']['pos']), label='4', sunk=state['4']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['5']['pos']), label='5', sunk=state['5']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['6']['pos']), label='6', sunk=state['6']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['7']['pos']), label='7', sunk=state['7']['sunk']),
+
+                Ball(self.space, Simulation.state_to_pymunk(state['9']['pos']), label='9', sunk=state['9']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['10']['pos']), label='10', sunk=state['10']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['11']['pos']), label='11', sunk=state['11']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['12']['pos']), label='12', sunk=state['12']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['13']['pos']), label='13', sunk=state['13']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['14']['pos']), label='14', sunk=state['14']['sunk']),
+                Ball(self.space, Simulation.state_to_pymunk(state['15']['pos']), label='15', sunk=state['15']['sunk'])
+            ]
+        '''
+        for ball_label in init_state:
+            ball = self.get_ball(ball_label)
+            ball.shape.custom['sunk'] = init_state[ball_label]['sunk']
+            ball.body.position = self.state_to_pymunk(init_state[ball_label]['pos'])
+            ball.body.velocity = (0,0)
+            
+
+
+        # if player is 1
+        # player_ball = self.geometry['balls'][0] if player == 1 else self.geometry['balls'][1]
+
+        # do the above in a less hard-coded way
+        player_ball = self.get_ball('p1' if player == 1 else 'p2')
+
+        # if the player's ball is sunk then we will make it un-sunk
+        if player_ball.shape.custom['sunk'] != None:
+            player_ball.shape.custom['sunk'] = None
 
         impulse = (-dir[0] * power, -dir[1] * power)
 
@@ -244,25 +316,3 @@ class Simulation():
             }
 
         return state
-
-    def actions(self):
-        player_ball = self.geometry['balls'][1] # p2
-
-        # get the discrete points: all non-sunk balls not on the players side
-        balls = []
-        for ball in self.geometry['balls']:
-            if ball.shape.custom['label'] in ['p1', 'p2']:
-                continue
-            if ball.shape.custom['sunk'] != None:
-                continue
-            if ball.body.position[0] < Simulation.state_to_pymunk(P2_BOUNDS[0])[0]:
-                balls.append(ball)
-
-        pois = []
-        for ball in balls:
-            v, point = self.scan(ball, player_ball)
-            if v is None:
-                continue
-            pois.append((v,point))
-
-        return pois
