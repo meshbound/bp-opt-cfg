@@ -1,8 +1,11 @@
-import pygad
 import sim
+from draw import Draw
+
+# lib
+from scipy.spatial.distance import cdist
 import numpy as np
 import random
-from scipy.spatial.distance import cdist
+import pygad
 
 def naive_fitness_func(ga_instance, solution, solution_idx):
     positions = [(solution[i], solution[i+1]) for i in range(0, len(solution), 2)]
@@ -34,13 +37,13 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
             '14' : {'sunk': None, 'pos': sim.random_pos(False)},
             '15' : {'sunk': None, 'pos': sim.random_pos(False)}
         }
-        my_sim = sim.Simulation(init_state, draw=False)
+        my_sim = sim.Simulation(init_state)
         actions = my_sim.actions() 
         for dir, origin in actions:
             power = 1000000 * random.uniform(0.5, 1.5)
             end_state = my_sim.move(dir, origin, power)
             total_score += sim.eval(end_state)
-            my_sim = sim.Simulation(init_state, draw=False)
+            my_sim = sim.Simulation(init_state, True)
 
     averge_score = total_score / (len(actions) * samples_per_action)
     fitness = averge_score - intersect_count
@@ -49,9 +52,7 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
 
     return fitness
 
-
 if __name__ == '__main__':
-    # try to get evolutionary alg to work next
     p1, p2 = sim.P1_BOUNDS
     gene_space = [
         range(p1[0], p2[0]),
@@ -70,7 +71,6 @@ if __name__ == '__main__':
         range(p1[1], p2[1]),
     ]
 
-    # Create the GA instance
     ga_instance = pygad.GA(
         num_generations=10,
         num_parents_mating=2,
@@ -81,7 +81,6 @@ if __name__ == '__main__':
         parallel_processing=["process", 8]
     )
 
-    # Run the GA
     ga_instance.run()
 
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
@@ -111,4 +110,4 @@ if __name__ == '__main__':
     sol_sim = sim.Simulation(init_state, True)
     
     while True:
-        sol_sim.render()
+        Draw.draw_frame(sol_sim.geometry)
