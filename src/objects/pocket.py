@@ -11,6 +11,7 @@ class Pocket():
 
         # shape
         self.shape = pymunk.Circle(self.body, POCKET_RADIUS - BALL_RADIUS)
+        self.shape.filter = pymunk.ShapeFilter(categories=RAYCAST_IGNORE)
         self.shape.collision_type = 2
         self.shape.sensor = True
 

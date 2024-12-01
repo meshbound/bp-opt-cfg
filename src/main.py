@@ -37,8 +37,8 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
             '14' : {'sunk': None, 'pos': sim.random_pos(False)},
             '15' : {'sunk': None, 'pos': sim.random_pos(False)}
         }
-        my_sim = sim.Simulation(True)
-        actions = my_sim.actions(init_state) 
+        my_sim = sim.Simulation(False)
+        actions = my_sim.actions(init_state, 2) 
         for dir, origin in actions:
             power = 1000000 * random.uniform(0.5, 1.5)
             end_state = my_sim.move(init_state, 2, dir, origin, power)
@@ -88,25 +88,26 @@ if __name__ == '__main__':
 
     positions = [(solution[i], solution[i+1]) for i in range(0, len(solution), 2)]
     init_state = {
-            'p1' : {'sunk': 'init', 'pos': sim.random_pos(True)},
-            'p2' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '1' : {'sunk': None, 'pos': positions[0]},
-            '2' : {'sunk': None, 'pos': positions[1]},
-            '3' : {'sunk': None, 'pos': positions[2]},
-            '4' : {'sunk': None, 'pos': positions[3]},
-            '5' : {'sunk': None, 'pos': positions[4]},
-            '6' : {'sunk': None, 'pos': positions[5]},
-            '7' : {'sunk': None, 'pos': positions[6]},
-            '9' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '10' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '11' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '12' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '13' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '14' : {'sunk': None, 'pos': sim.random_pos(False)},
-            '15' : {'sunk': None, 'pos': sim.random_pos(False)}
-        }
+        'p1' : {'sunk': 'init', 'pos': sim.random_pos(True)},
+        'p2' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '1' : {'sunk': None, 'pos': positions[0]},
+        '2' : {'sunk': None, 'pos': positions[1]},
+        '3' : {'sunk': None, 'pos': positions[2]},
+        '4' : {'sunk': None, 'pos': positions[3]},
+        '5' : {'sunk': None, 'pos': positions[4]},
+        '6' : {'sunk': None, 'pos': positions[5]},
+        '7' : {'sunk': None, 'pos': positions[6]},
+        '9' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '10' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '11' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '12' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '13' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '14' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '15' : {'sunk': None, 'pos': sim.random_pos(False)}
+    }
 
-    sol_sim = sim.Simulation(init_state, True)
+    sol_sim = sim.Simulation(True)
+    sol_sim.set_state(init_state)
     
     while True:
         Draw.draw_frame(sol_sim.geometry)
