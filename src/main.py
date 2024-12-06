@@ -1,4 +1,5 @@
 import sim
+from pool_state import PoolState
 from draw import Draw
 
 # lib
@@ -6,6 +7,9 @@ from scipy.spatial.distance import cdist
 import numpy as np
 import random
 import pygad
+
+from mcts.base.base import BaseState, BaseAction
+from mcts.searcher.mcts import MCTS
 
 def naive_fitness_func(ga_instance, solution, solution_idx):
     positions = [(solution[i], solution[i+1]) for i in range(0, len(solution), 2)]
@@ -38,10 +42,10 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
             '15' : {'sunk': None, 'pos': sim.random_pos(False)}
         }
         my_sim = sim.Simulation(True)
-        actions = my_sim.actions(init_state, 1) 
+        actions = my_sim.actions(init_state, 2) 
         for dir, origin in actions:
             power = 1000000 * random.uniform(0.5, 1.5)
-            end_state = my_sim.move(init_state, 1, dir, origin, power)
+            end_state = my_sim.move(init_state, 2, dir, origin, power)
             total_score += sim.eval(end_state)
 
     averge_score = total_score / (len(actions) * samples_per_action)
@@ -50,6 +54,11 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
     print('fitness:', fitness)
 
     return fitness
+
+def informed_fitness_func(ga_instance, solution, solution_idx):
+    initial_state = PoolState()
+    searcher = MCTS(iteration_limit=10)
+    action = searcher.search(initial_state=initial_state)
 
 if __name__ == '__main__':
     p1, p2 = sim.P1_BOUNDS
@@ -77,7 +86,7 @@ if __name__ == '__main__':
         sol_per_pop=50,
         num_genes=len(gene_space),
         gene_space=gene_space,
-        parallel_processing=["process", 1]
+        parallel_processing=["process", 4]
     )
 
     ga_instance.run()

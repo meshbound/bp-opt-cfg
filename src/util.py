@@ -38,3 +38,19 @@ def eval(state):
             elif pos[0] < P1_BOUNDS[1][0]:
                 score += 1
     return score
+
+def is_terminal(state):
+    p1 = False
+    p2 = False
+    for ball in state:
+        if ball in ['p1', 'p2']:
+            continue
+        if state[ball]['sunk'] == None:
+            pos = state[ball]['pos']
+            if pos[0] > P2_BOUNDS[0][0]:
+                p2 = True
+            elif pos[0] < P1_BOUNDS[1][0]:
+                p1 = True
+            if p1 and p2:
+                return False
+    return True

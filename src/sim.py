@@ -87,7 +87,7 @@ class Simulation():
         ball_handler = self.space.add_collision_handler(1, 1)
         ball_handler.begin = Simulation.ball_collide
 
-    def reflect(self, ray, hit):
+    def reflect(self, ray, hit, player):
         CAST_LEN = 10000
 
         norm = np.array([hit.normal.x, hit.normal.y])
@@ -113,21 +113,38 @@ class Simulation():
         bottom_end = tuple(pos - r_v + v*CAST_LEN)
         bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
 
-        point = None
-        if top_hit:
-            top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
-            point = top_point
-        if bottom_hit:
-            bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
-            if point is None or (point is not None and bottom_point[0] < point[0]):
-                point = bottom_point
-        if mid_hit:
-            mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
-            if point is None or (point is not None and mid_point[0] < point[0]):
-                point = mid_point
+        if player == 1:
+            point = None
+            if top_hit:
+                top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                point = top_point
+            if bottom_hit:
+                bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                if point is None or (point is not None and bottom_point[0] > point[0]):
+                    point = bottom_point
+            if mid_hit:
+                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+                if point is None or (point is not None and mid_point[0] > point[0]):
+                    point = mid_point
 
-        if point is not None and point[0] > Simulation.state_to_pymunk(P2_SHOOT_BOUNDS[0])[0]:
-            return v, point
+            if point is not None and point[0] < Simulation.state_to_pymunk(P1_SHOOT_BOUNDS[1])[0]:
+                return v, point
+        else:
+            point = None
+            if top_hit:
+                top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                point = top_point
+            if bottom_hit:
+                bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                if point is None or (point is not None and bottom_point[0] < point[0]):
+                    point = bottom_point
+            if mid_hit:
+                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+                if point is None or (point is not None and mid_point[0] < point[0]):
+                    point = mid_point
+
+            if point is not None and point[0] > Simulation.state_to_pymunk(P2_SHOOT_BOUNDS[0])[0]:
+                return v, point
         
         return None, None
 
@@ -162,40 +179,76 @@ class Simulation():
             bottom_end = pos - r_v + v*CAST_LEN
             bottom_hit = self.space.segment_query_first(bottom_start, bottom_end, 1, filter)
 
-            point = None
-            can_reflect = True
+            if player == 1:
+                point = None
+                can_reflect = True
 
-            if top_hit:
-                if top_hit.shape and top_hit.shape.collision_type == 1:
-                    can_reflect = False
-                top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
-                point = top_point
-            if bottom_hit:
-                if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
-                    can_reflect = False
-                bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
-                if point is None or (point is not None and bottom_point[0] < point[0]):
-                    point = bottom_point
-            if mid_hit:
-                if mid_hit.shape and mid_hit.shape.collision_type == 1:
-                    can_reflect = False
-                mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
-                if point is None or (point is not None and mid_point[0] < point[0]):
-                    point = mid_point
-            
-            if point is not None and point[0] > Simulation.state_to_pymunk(P2_SHOOT_BOUNDS[0])[0]:
-                ball.shape.filter = prev_filter
-                player_ball.shape.filter = prev_player_filter
-                return v, point
+                if top_hit:
+                    if top_hit.shape and top_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                    point = top_point
+                if bottom_hit:
+                    if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                    if point is None or (point is not None and bottom_point[0] > point[0]):
+                        point = bottom_point
+                if mid_hit:
+                    if mid_hit.shape and mid_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+                    if point is None or (point is not None and mid_point[0] > point[0]):
+                        point = mid_point
+                
+                if point is not None and point[0] < Simulation.state_to_pymunk(P1_SHOOT_BOUNDS[1])[0]:
+                    ball.shape.filter = prev_filter
+                    player_ball.shape.filter = prev_player_filter
+                    return v, point
+                else:
+                    if can_reflect and mid_hit:
+                        v, reflect_point = self.reflect(v, mid_hit, player)
+
+                        if reflect_point is not None:
+                            ball.shape.filter = prev_filter
+                            player_ball.shape.filter = prev_player_filter
+                            return v, reflect_point
+                theta += np.pi/32
             else:
-                if can_reflect and mid_hit:
-                    v, reflect_point = self.reflect(v, mid_hit)
+                point = None
+                can_reflect = True
 
-                    if reflect_point is not None:
-                        ball.shape.filter = prev_filter
-                        player_ball.shape.filter = prev_player_filter
-                        return v, reflect_point
-            theta += np.pi/32
+                if top_hit:
+                    if top_hit.shape and top_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    top_point = np.array([top_hit.point.x, top_hit.point.y]) - r_v
+                    point = top_point
+                if bottom_hit:
+                    if bottom_hit.shape and bottom_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    bottom_point = np.array([bottom_hit.point.x, bottom_hit.point.y]) + r_v
+                    if point is None or (point is not None and bottom_point[0] < point[0]):
+                        point = bottom_point
+                if mid_hit:
+                    if mid_hit.shape and mid_hit.shape.collision_type == 1:
+                        can_reflect = False
+                    mid_point = np.array([mid_hit.point.x - BALL_RADIUS, mid_hit.point.y])
+                    if point is None or (point is not None and mid_point[0] < point[0]):
+                        point = mid_point
+                
+                if point is not None and point[0] > Simulation.state_to_pymunk(P2_SHOOT_BOUNDS[0])[0]:
+                    ball.shape.filter = prev_filter
+                    player_ball.shape.filter = prev_player_filter
+                    return v, point
+                else:
+                    if can_reflect and mid_hit:
+                        v, reflect_point = self.reflect(v, mid_hit, player)
+
+                        if reflect_point is not None:
+                            ball.shape.filter = prev_filter
+                            player_ball.shape.filter = prev_player_filter
+                            return v, reflect_point
+                theta += np.pi/32
         
         ball.shape.filter = prev_filter
         player_ball.shape.filter = prev_player_filter

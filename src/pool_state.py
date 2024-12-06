@@ -1,7 +1,5 @@
 import sim
 
-from __future__ import division
-
 import operator
 from copy import deepcopy
 from functools import reduce
@@ -9,55 +7,40 @@ from functools import reduce
 from mcts.base.base import BaseState, BaseAction
 from mcts.searcher.mcts import MCTS
 
+state_sim = sim.Simulation()
+
 class PoolState(BaseState):
     def __init__(self, ball_info):
         self.ball_info = ball_info
-        self.currentPlayer = 1
+        self.current_player = 2
+        self.depth = 0
 
     def get_current_player(self):
-        return self.currentPlayer
+        return self.current_player
 
     def get_possible_actions(self):
+        actions = state_sim.actions(self.ball_info, self.current_player)
         
-        possibleActions = []
-        for i in range(len(self.board)):
-            for j in range(len(self.board[i])):
-                if self.board[i][j] == 0:
-                    possibleActions.append(Action(player=self.currentPlayer, x=i, y=j))
-        return possibleActions
+        proper = []
+        for (dir, origin) in actions:
+            proper.append(Action(self.current_player, dir, origin, 1000000))
+
+        return proper
 
     def take_action(self, action):
-        newState = deepcopy(self)
-        newState.board[action.x][action.y] = action.player
-        newState.currentPlayer = self.currentPlayer * -1
-        return newState
+        new_state = deepcopy(self)
+        new_state.ball_info = state_sim.move(self.ball_info, self.current_player, action.dir, action.origin, action.power)
+        new_state.current_player = 1 if self.current_player == 2 else 2
+        new_state.depth += 1
+        return new_state
 
     def is_terminal(self):
-        # can include depth limit in here
-        for row in self.board:
-            if abs(sum(row)) == 3:
-                return True
-        for column in list(map(list, zip(*self.board))):
-            if abs(sum(column)) == 3:
-                return True
-        for diagonal in [[self.board[i][i] for i in range(len(self.board))],
-                         [self.board[i][len(self.board) - i - 1] for i in range(len(self.board))]]:
-            if abs(sum(diagonal)) == 3:
-                return True
-        return reduce(operator.mul, sum(self.board, []), 1) != 0
+        if self.depth > 4:
+            return True
+        return sim.is_terminal(self.ball_info)
 
     def get_reward(self):
-        for row in self.board:
-            if abs(sum(row)) == 3:
-                return sum(row) / 3
-        for column in list(map(list, zip(*self.board))):
-            if abs(sum(column)) == 3:
-                return sum(column) / 3
-        for diagonal in [[self.board[i][i] for i in range(len(self.board))],
-                         [self.board[i][len(self.board) - i - 1] for i in range(len(self.board))]]:
-            if abs(sum(diagonal)) == 3:
-                return sum(diagonal) / 3
-        return 0
+        return sim.eval(self.ball_info)
 
 
 class Action(BaseAction):
@@ -74,15 +57,35 @@ class Action(BaseAction):
         return str(self)
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.dir == other.dir and self.origin == other.origin and self.power == other.power and self.player == other.player
+        return self.__class__ == other.__class__ and self.dir[0] == other.dir[0] and self.dir[1] == other.dir[1] and self.origin[0] == other.origin[0] and self.origin[1] == other.origin[1] and self.power == other.power and self.player == other.player
 
     def __hash__(self):
-        return hash((self.dir, self.origin, self.power, self.player))
+        return hash((self.dir[0], self.dir[1], self.origin[0], self.origin[1], self.power, self.player))
 
 
 if __name__ == "__main__":
-    initial_state = NaughtsAndCrossesState()
-    searcher = MCTS(time_limit=1000)
-    action = searcher.search(initial_state=initial_state)
+    init_state = {
+        'p1' : {'sunk': 'init', 'pos': sim.random_pos(True)},
+        'p2' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '1' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '2' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '3' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '4' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '5' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '6' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '7' : {'sunk': None, 'pos': sim.random_pos(True)},
+        '9' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '10' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '11' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '12' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '13' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '14' : {'sunk': None, 'pos': sim.random_pos(False)},
+        '15' : {'sunk': None, 'pos': sim.random_pos(False)}
+    }
+    
+    initial_state = PoolState(init_state)
+    searcher = MCTS(iteration_limit=25)
+    searcher.search(initial_state=initial_state)
 
-    print(action)
+    print(searcher.root.totalReward / searcher.root.numVisits)
+ 
