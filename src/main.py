@@ -56,9 +56,49 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
     return fitness
 
 def informed_fitness_func(ga_instance, solution, solution_idx):
-    initial_state = PoolState()
-    searcher = MCTS(iteration_limit=10)
-    action = searcher.search(initial_state=initial_state)
+    positions = [(solution[i], solution[i+1]) for i in range(0, len(solution), 2)]
+
+    distance_matrix = cdist(positions, positions)
+    intersect_matrix = distance_matrix <= (sim.BALL_RADIUS*2)
+    np.fill_diagonal(intersect_matrix, False)
+    intersect_count = np.count_nonzero(intersect_matrix)
+
+    total_score = 0
+    searches_per_sample = 2
+    iterations_per_search = 20
+
+    for _ in range(searches_per_sample):
+        init_state = {
+            'p1' : {'sunk': 'init', 'pos': sim.random_pos(True)},
+            'p2' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '1' : {'sunk': None, 'pos': positions[0]},
+            '2' : {'sunk': None, 'pos': positions[1]},
+            '3' : {'sunk': None, 'pos': positions[2]},
+            '4' : {'sunk': None, 'pos': positions[3]},
+            '5' : {'sunk': None, 'pos': positions[4]},
+            '6' : {'sunk': None, 'pos': positions[5]},
+            '7' : {'sunk': None, 'pos': positions[6]},
+            '9' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '10' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '11' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '12' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '13' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '14' : {'sunk': None, 'pos': sim.random_pos(False)},
+            '15' : {'sunk': None, 'pos': sim.random_pos(False)}
+        }
+        
+        my_sim = sim.Simulation(False)
+        initial_state = PoolState(init_state, my_sim)
+        searcher = MCTS(iteration_limit=iterations_per_search)
+        searcher.search(initial_state=initial_state)
+        total_score += searcher.root.totalReward
+
+    averge_score = total_score / (searches_per_sample * iterations_per_search)
+    fitness = averge_score - intersect_count
+
+    print('fitness:', fitness)
+
+    return fitness
 
 if __name__ == '__main__':
     p1, p2 = sim.P1_BOUNDS
@@ -82,11 +122,11 @@ if __name__ == '__main__':
     ga_instance = pygad.GA(
         num_generations=10,
         num_parents_mating=2,
-        fitness_func=naive_fitness_func,
+        fitness_func=informed_fitness_func,
         sol_per_pop=50,
         num_genes=len(gene_space),
         gene_space=gene_space,
-        parallel_processing=["process", 4]
+        parallel_processing=["process", 12]
     )
 
     ga_instance.run()
@@ -117,6 +157,6 @@ if __name__ == '__main__':
 
     sol_sim = sim.Simulation(True)
     sol_sim.set_state(init_state)
-    
+
     while True:
-        Draw.draw_frame(sol_sim.geometry)
+        sol_sim.draw.draw_frame(sol_sim.geometry)
