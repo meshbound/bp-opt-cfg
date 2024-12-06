@@ -34,13 +34,13 @@ class Simulation():
     @staticmethod
     def ball_collide(arbiter, space, data):
         ball_a, ball_b = arbiter.shapes
-        if ball_a.custom['sunk'] != None or ball_b.custom['sunk'] != None:
+        if ball_a.custom['sunk'] or ball_b.custom['sunk']:
             return False
         return True
 
     def __init__(self, draw=False):
         self.space = pymunk.Space()
-        self.draw = draw
+        self.draw = Draw() if draw else None
 
         self.geometry = {
             'bounds': [
@@ -131,17 +131,18 @@ class Simulation():
         
         return None, None
 
-    def scan(self, ball, player_ball):
+    def scan(self, ball, player):
         CAST_LEN = 10000
-
-        theta = 0
-
+        
+        player_ball = self.get_ball('p1' if player == 1 else 'p2')
+        
         prev_filter = ball.shape.filter
         prev_player_filter = player_ball.shape.filter
 
         ball.shape.filter = pymunk.ShapeFilter(categories=RAYCAST_IGNORE)
         player_ball.shape.filter = pymunk.ShapeFilter(categories=RAYCAST_IGNORE)
 
+        theta = 0
         while theta <= 2*np.pi:
             pos = ball.body.position
             filter = pymunk.ShapeFilter(mask=pymunk.ShapeFilter.ALL_MASKS()^RAYCAST_IGNORE)
@@ -211,21 +212,19 @@ class Simulation():
     def actions(self, state, player):
         self.set_state(state)
 
-        player_ball = self.get_ball('p1' if player == 1 else 'p2')
-
         # get the discrete points: all non-sunk balls not on the players side
         balls = []
         for ball in self.geometry['balls']:
-            if ball.shape.custom['label'] in ['p1', 'p2']:
+            if ball.shape.custom['label'] in ['p1', 'p2'] or ball.shape.custom['sunk']:
                 continue
-            if ball.shape.custom['sunk'] != None:
-                continue
-            if ball.body.position[0] < Simulation.state_to_pymunk(P2_BOUNDS[0])[0]:
+            if player == 2 and ball.body.position[0] < Simulation.state_to_pymunk(P2_BOUNDS[0])[0]:
+                balls.append(ball)
+            elif player == 1 and ball.body.position[0] > Simulation.state_to_pymunk(P1_BOUNDS[1])[0]:
                 balls.append(ball)
 
         pois = []
         for ball in balls:
-            v, point = self.scan(ball, player_ball)
+            v, point = self.scan(ball, player)
             if v is None:
                 continue
             pois.append((v,point))
@@ -248,7 +247,7 @@ class Simulation():
         player_ball = self.get_ball('p1' if player == 1 else 'p2')
 
         # if the player's ball is sunk then we will make it un-sunk
-        if player_ball.shape.custom['sunk'] != None:
+        if player_ball.shape.custom['sunk']:
             player_ball.shape.custom['sunk'] = None
 
         impulse = (-dir[0] * power, -dir[1] * power)
@@ -258,13 +257,13 @@ class Simulation():
 
         while True:
             if self.draw:
-                Draw.draw_frame(self.geometry)
+                self.draw.draw_frame(self.geometry)
 
             for _ in range(SIM_SPEED):
                 for group in self.geometry:
                     for obj in self.geometry[group]:
                         if group == 'balls':
-                            if obj.shape.custom['sunk'] != None:
+                            if obj.shape.custom['sunk']:
                                 continue
                         obj.step()
                 self.space.step(1/(FPS * SIM_SPEED))
@@ -273,7 +272,7 @@ class Simulation():
             for group in self.geometry:
                 for obj in self.geometry[group]:
                     if group == 'balls':
-                        if obj.shape.custom['sunk'] != None:
+                        if obj.shape.custom['sunk']:
                             continue
                     if obj.body.velocity.length > 0.25:
                         delta = True

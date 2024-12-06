@@ -37,11 +37,11 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
             '14' : {'sunk': None, 'pos': sim.random_pos(False)},
             '15' : {'sunk': None, 'pos': sim.random_pos(False)}
         }
-        my_sim = sim.Simulation(False)
-        actions = my_sim.actions(init_state, 2) 
+        my_sim = sim.Simulation(True)
+        actions = my_sim.actions(init_state, 1) 
         for dir, origin in actions:
             power = 1000000 * random.uniform(0.5, 1.5)
-            end_state = my_sim.move(init_state, 2, dir, origin, power)
+            end_state = my_sim.move(init_state, 1, dir, origin, power)
             total_score += sim.eval(end_state)
 
     averge_score = total_score / (len(actions) * samples_per_action)
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         sol_per_pop=50,
         num_genes=len(gene_space),
         gene_space=gene_space,
-        parallel_processing=["process", 8]
+        parallel_processing=["process", 1]
     )
 
     ga_instance.run()

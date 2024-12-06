@@ -33,6 +33,7 @@ class PoolState(BaseState):
         return newState
 
     def is_terminal(self):
+        # can include depth limit in here
         for row in self.board:
             if abs(sum(row)) == 3:
                 return True
