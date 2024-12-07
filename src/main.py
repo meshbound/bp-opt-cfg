@@ -4,6 +4,7 @@ from draw import Draw
 
 # lib
 from scipy.spatial.distance import cdist
+from scipy.stats import truncnorm
 import numpy as np
 import random
 import pygad
@@ -41,7 +42,7 @@ def naive_fitness_func(ga_instance, solution, solution_idx):
             '14' : {'sunk': None, 'pos': sim.random_pos(False)},
             '15' : {'sunk': None, 'pos': sim.random_pos(False)}
         }
-        my_sim = sim.Simulation(True)
+        my_sim = sim.Simulation(False)
         actions = my_sim.actions(init_state, 2) 
         for dir, origin in actions:
             power = 1000000 * random.uniform(0.5, 1.5)
@@ -100,30 +101,51 @@ def informed_fitness_func(ga_instance, solution, solution_idx):
 
     return fitness
 
+def mutation_func(offspring, ga_instance):
+    for sol_idx in range(offspring.shape[0]):
+        for gene_idx in range(offspring.shape[1]):
+            if random.random() > 1 / offspring.shape[1]:
+                continue
+
+            mean = offspring[sol_idx][gene_idx]
+            std_dev = 32*np.exp(-0.25*ga_instance.generations_completed) + 4
+            lower_bound = ga_instance.gene_space[gene_idx]['low']
+            upper_bound = ga_instance.gene_space[gene_idx]['high']
+
+            dist = truncnorm((lower_bound - mean) / std_dev, (upper_bound - mean) / std_dev, loc=mean, scale=std_dev)
+            sample = dist.rvs()
+
+            print(std_dev, 'MUTATION!', sol_idx, gene_idx, offspring[sol_idx][gene_idx], sample)
+
+            offspring[sol_idx][gene_idx] = sample
+
+    return offspring
+
 if __name__ == '__main__':
     p1, p2 = sim.P1_BOUNDS
     gene_space = [
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
-        range(p1[0], p2[0]),
-        range(p1[1], p2[1]),
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]},
+        {'low': p1[0], 'high': p2[0]},
+        {'low': p1[1], 'high': p2[1]}
     ]
 
     ga_instance = pygad.GA(
-        num_generations=10,
+        num_generations=50,
         num_parents_mating=2,
         fitness_func=informed_fitness_func,
-        sol_per_pop=50,
+        mutation_type=mutation_func,
+        sol_per_pop=100,
         num_genes=len(gene_space),
         gene_space=gene_space,
         parallel_processing=["process", 12]
