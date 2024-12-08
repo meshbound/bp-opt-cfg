@@ -45,12 +45,11 @@ class Optimize():
         return np.count_nonzero(intersect_matrix)
 
     @staticmethod
-    def naive_fitness_func(ga_instance, solution, solution_idx):
+    def get_naive_fitness(solution, samples_per_action):
         positions = Optimize.unpack_positions(solution)
         intersect_count = Optimize.get_intersect_count(positions)
 
         total_score = 0
-        samples_per_action = 20
 
         for _ in range(samples_per_action):
             sim_init_state = {
@@ -80,18 +79,25 @@ class Optimize():
         averge_score = total_score / (len(actions) * samples_per_action)
         fitness = averge_score - intersect_count
 
-        print('fitness:', fitness)
+        # print('fitness:', fitness)
 
         return fitness
 
     @staticmethod
-    def informed_fitness_func(ga_instance, solution, solution_idx):
+    def naive_fitness_func(ga_instance, solution, solution_idx):
+        samples_per_action = 4
+
+        fitness = Optimize.get_naive_fitness(solution, samples_per_action)
+
+        return fitness
+
+
+    @staticmethod
+    def get_informed_fitness(solution, searches_per_sample, iterations_per_search):
         positions = Optimize.unpack_positions(solution)
         intersect_count = Optimize.get_intersect_count(positions)
 
         total_score = 0
-        searches_per_sample = 2
-        iterations_per_search = 20
 
         for _ in range(searches_per_sample):
             sim_init_state = {
@@ -113,7 +119,7 @@ class Optimize():
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
             
-            my_sim = Simulation(True)
+            my_sim = Simulation(False)
 
             mcts_init_state = State(sim_init_state, my_sim)
             searcher = MCTS(iteration_limit=iterations_per_search)
@@ -124,7 +130,16 @@ class Optimize():
         averge_score = total_score / (searches_per_sample * iterations_per_search)
         fitness = averge_score - intersect_count
 
-        print('fitness:', fitness)
+        # print('fitness:', fitness)
+
+        return fitness
+
+    @staticmethod
+    def informed_fitness_func(ga_instance, solution, solution_idx):
+        searches_per_sample = 2
+        iterations_per_search = 20
+
+        fitness = Optimize.get_informed_fitness(solution, searches_per_sample, iterations_per_search)
 
         return fitness
 
@@ -148,7 +163,7 @@ class Optimize():
                 offspring[sol_idx][gene_idx] = sample
 
         return offspring
-    
+
     @staticmethod
     def draw_solution(solution):
         positions = Optimize.unpack_positions(solution)
@@ -178,6 +193,12 @@ class Optimize():
             my_sim.draw.draw_frame(my_sim.geometry)
 
     @staticmethod
+    def on_gen(ga_instance):
+        ga_instance.stats['gen_fitness'].append(ga_instance.best_solution()[1])
+        print("Generation : ", ga_instance.generations_completed)
+        print("Fitness of the best solution :", ga_instance.best_solution()[1])
+
+    @staticmethod
     def naive_approach(num_generations=10, num_parents_mating=2, sol_per_pop=50):
         ga_instance = pygad.GA(
             num_generations=num_generations,
@@ -187,17 +208,17 @@ class Optimize():
             sol_per_pop=sol_per_pop,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,
-            #parallel_processing=['process', 12]
+            parallel_processing=['process', 12],
+            on_generation=Optimize.on_gen
         )
+        ga_instance.stats = {
+            'gen_fitness': []
+        }
 
         ga_instance.run()
 
         solution, fitness, _ = ga_instance.best_solution()
-
-        print("Best solution:", solution)
-        print("Best fitness:", fitness)
-
-        return solution, fitness
+        return solution, fitness, ga_instance.stats
 
     @staticmethod
     def informed_approach(num_generations=10, num_parents_mating=2, sol_per_pop=50):
@@ -209,15 +230,15 @@ class Optimize():
             sol_per_pop=sol_per_pop,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,
-            #parallel_processing=['process', 12]
+            parallel_processing=['process', 12],
+            on_generation=Optimize.on_gen
         )
+        ga_instance.stats = {
+            'gen_fitness': []
+        }
 
         ga_instance.run()
 
         solution, fitness, _ = ga_instance.best_solution()
-
-        print("Best solution:", solution)
-        print("Best fitness:", fitness)
-
-        return solution, fitness
+        return solution, fitness, ga_instance.stats
 

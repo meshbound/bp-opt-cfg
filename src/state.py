@@ -1,6 +1,6 @@
 import sim
 import util
-from const import *
+import const
 
 import operator
 from copy import deepcopy
@@ -46,7 +46,7 @@ class State(BaseState):
         return new_state
 
     def is_terminal(self):
-        if self.depth > PLAYOUT_DEPTH_LIMIT:
+        if self.depth > const.PLAYOUT_DEPTH_LIMIT:
             return True
         return util.is_terminal(self.sim_state)
 

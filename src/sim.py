@@ -242,7 +242,7 @@ class Simulation():
             dir, origin = self.scan(ball, player)
             if dir is None:
                 continue
-            for power in [500000, 750000,1000000, 1250000]:
+            for power in [500000, 750000, 1000000]:
                 actions.append((dir,origin,power))
 
         return actions

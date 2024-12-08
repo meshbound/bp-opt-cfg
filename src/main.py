@@ -1,5 +1,7 @@
-from optimize import Optimize
+import exp
 
 if __name__ == '__main__':
-    solution, fitness = Optimize.naive_approach()
-    Optimize.draw_solution(solution)
+    exp.gen_naive_data()
+    exp.gen_informed_data()
+    exp.mcts_naive_final()
+    exp.mcts_informed_final()
