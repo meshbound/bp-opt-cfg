@@ -11,9 +11,9 @@ class Ball():
 
         # shape
         self.shape = pymunk.Circle(self.body, BALL_RADIUS)
-        self.shape.density = 25
+        self.shape.density = BALL_DENSITY
         self.shape.elasticity = BALL_ELASTICITY
-        self.shape.collision_type = 1
+        self.shape.collision_type = BALL_COLLISION_TYPE
 
         # custom
         self.shape.custom = {
@@ -24,6 +24,6 @@ class Ball():
         space.add(self.body, self.shape)
 
     def step(self):
-        friction_force = (self.body.mass * 9.81) * 0.8
+        friction_force = (self.body.mass * 9.81) * BALL_FRICTION
         dir = -pymunk.Vec2d.normalized(self.body.velocity)
         self.body.apply_force_at_local_point((friction_force * dir.x, friction_force * dir.y), (0,0))

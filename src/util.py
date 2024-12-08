@@ -13,7 +13,6 @@ def pretty_print_state(state):
     print(out)
 
 def random_pos(p1):
-    # TODO: reroll if the point is within a pocket
     (x0, y0), (x1, y1) = P1_BOUNDS if p1 else P2_BOUNDS
 
     pos = (x0 + random.random() * (x1 - x0), y0 + random.random() * (y1 - y0))

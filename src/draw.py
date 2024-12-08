@@ -93,31 +93,31 @@ class Draw():
                 return
             
         self.display.fill((255, 255, 255))
-        pygame.draw.rect(self.display, (0, 0, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL - 5, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL - 5, TABLE_WIDTH + TABLE_BEZEL * 2 + 10, TABLE_HEIGHT + TABLE_BEZEL * 2 + 10))
-        pygame.draw.rect(self.display, (101, 67, 33), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL, TABLE_WIDTH + TABLE_BEZEL * 2, TABLE_HEIGHT + TABLE_BEZEL * 2))
-        pygame.draw.rect(self.display, (0, 128, 0), pygame.Rect(WINDOW_WIDTH//2 - TABLE_WIDTH//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2, TABLE_WIDTH, TABLE_HEIGHT))
+        pygame.draw.rect(self.display, (0, 0, 0), pygame.Rect(TABLE_OUTLINE_LEFT, TABLE_OUTLINE_TOP, TABLE_OUTLINE_WIDTH, TABLE_OUTLINE_HEIGHT))
+        pygame.draw.rect(self.display, (101, 67, 33), pygame.Rect(TABLE_EDGE_LEFT, TABLE_EDGE_TOP, TABLE_EDGE_WIDTH, TABLE_EDGE_HEIGHT))
+        pygame.draw.rect(self.display, (0, 128, 0), pygame.Rect(TABLE_GREEN_LEFT, TABLE_GREEN_TOP, TABLE_WIDTH, TABLE_HEIGHT))
 
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 - TABLE_HEIGHT//2 - TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_1_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_2_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_3_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_4_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_5_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_TOP_6_POS, MARK_RADIUS)
 
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//4, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + 3*TABLE_WIDTH//8, WINDOW_HEIGHT//2 + TABLE_HEIGHT//2 + TABLE_BEZEL//2), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_1_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_2_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_3_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_4_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_5_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_BOTTOM_6_POS, MARK_RADIUS)
 
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 - TABLE_WIDTH//2 - TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_LEFT_1_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_LEFT_2_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_LEFT_3_POS, MARK_RADIUS)
 
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 - TABLE_HEIGHT//4), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2), MARK_RADIUS)
-        pygame.draw.circle(self.display, (255, 255, 255), (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4), MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_RIGHT_1_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_RIGHT_2_POS, MARK_RADIUS)
+        pygame.draw.circle(self.display, (255, 255, 255), MARK_RIGHT_3_POS, MARK_RADIUS)
 
         for group in geometry:
             for obj in geometry[group]:
