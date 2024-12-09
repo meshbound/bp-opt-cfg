@@ -70,7 +70,7 @@ class Optimize():
                 '14' : {'sunk': None, 'pos': util.random_pos(False)},
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
-            my_sim = Simulation(False)
+            my_sim = Simulation(draw=0)
             actions = my_sim.actions(sim_init_state, 2) 
             for dir, origin, power in actions:
                 end_state = my_sim.move(sim_init_state, 2, dir, origin, power)
@@ -119,7 +119,7 @@ class Optimize():
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
             
-            my_sim = Simulation(False)
+            my_sim = Simulation(draw=0)
 
             mcts_init_state = State(sim_init_state, my_sim)
             searcher = MCTS(iteration_limit=iterations_per_search)
@@ -136,7 +136,7 @@ class Optimize():
 
     @staticmethod
     def informed_fitness_func(ga_instance, solution, solution_idx):
-        searches_per_sample = 2
+        searches_per_sample = 4
         iterations_per_search = 20
 
         fitness = Optimize.get_informed_fitness(solution, searches_per_sample, iterations_per_search)
@@ -186,11 +186,39 @@ class Optimize():
             '15' : {'sunk': 'init', 'pos': (0,0)}
         }
 
-        my_sim = Simulation(True)
+        my_sim = Simulation(draw=0)
         my_sim.set_state(sim_init_state)
 
         while True:
             my_sim.draw.draw_frame(my_sim.geometry)
+    
+    @staticmethod
+    def save_image_of_solution(solution, filename):
+        positions = Optimize.unpack_positions(solution)
+        sim_init_state = {
+            'p1' : {'sunk': 'init', 'pos': (0,0)},
+            'p2' : {'sunk': 'init', 'pos': (0,0)},
+            '1' : {'sunk': None, 'pos': positions[0]},
+            '2' : {'sunk': None, 'pos': positions[1]},
+            '3' : {'sunk': None, 'pos': positions[2]},
+            '4' : {'sunk': None, 'pos': positions[3]},
+            '5' : {'sunk': None, 'pos': positions[4]},
+            '6' : {'sunk': None, 'pos': positions[5]},
+            '7' : {'sunk': None, 'pos': positions[6]},
+            '9' : {'sunk': 'init', 'pos': (0,0)},
+            '10' : {'sunk': 'init', 'pos': (0,0)},
+            '11' : {'sunk': 'init', 'pos': (0,0)},
+            '12' : {'sunk': 'init', 'pos': (0,0)},
+            '13' : {'sunk': 'init', 'pos': (0,0)},
+            '14' : {'sunk': 'init', 'pos': (0,0)},
+            '15' : {'sunk': 'init', 'pos': (0,0)}
+        }
+
+        my_sim = Simulation(draw=1)
+        my_sim.set_state(sim_init_state)
+
+        my_sim.draw.draw_frame(my_sim.geometry)
+        my_sim.draw.save_image(filename)
 
     @staticmethod
     def on_gen(ga_instance):

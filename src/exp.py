@@ -7,8 +7,9 @@ import numpy as np
 out_dir = './data/'
 
 def gen_naive_data():
+    print('naive data')
 
-    num_runs = 2
+    num_runs = 9
 
     gen_per_run = 25
     sol_pop = 75
@@ -30,8 +31,9 @@ def gen_naive_data():
     pass
 
 def gen_informed_data():
+    print('informed data')
     
-    num_runs = 2
+    num_runs = 10
 
     gen_per_run = 25
     sol_pop = 75
@@ -51,6 +53,8 @@ def gen_informed_data():
             f.close()
 
 def mcts_naive_final():
+    print('mcts naive final')
+
     const.PLAYOUT_DEPTH_LIMIT = 10
     searches_per_sample = 5
     iterations_per_search = 50
@@ -70,6 +74,8 @@ def mcts_naive_final():
             f.close()
 
 def mcts_informed_final():
+    print('mcts informed final')
+
     const.PLAYOUT_DEPTH_LIMIT = 10
     searches_per_sample = 5
     iterations_per_search = 50

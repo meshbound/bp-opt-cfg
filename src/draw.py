@@ -6,10 +6,15 @@ import sim
 import pygame
 
 class Draw():
-    def __init__(self):
+    def __init__(self, headless=False):
         pygame.init()
 
-        self.display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        if headless:
+            self.display = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        else:
+            self.display = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+        self.headless = headless
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont('Arial', 12)
 
@@ -87,10 +92,11 @@ class Draw():
             #pygame.draw.circle(self.display, (0, 255, 0), mtog(x, y), POCKET_RADIUS - BALL_RADIUS) # critical region  
         
     def draw_frame(self, geometry):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return
+        if not self.headless:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
             
         self.display.fill((255, 255, 255))
         pygame.draw.rect(self.display, (0, 0, 0), pygame.Rect(TABLE_OUTLINE_LEFT, TABLE_OUTLINE_TOP, TABLE_OUTLINE_WIDTH, TABLE_OUTLINE_HEIGHT))
@@ -123,5 +129,10 @@ class Draw():
             for obj in geometry[group]:
                 self.draw_obj(obj)
 
-        pygame.display.update()
-        self.clock.tick(FPS * SIM_SPEED)
+        if not self.headless:
+            pygame.display.update()
+            self.clock.tick(FPS * SIM_SPEED)
+
+    def save_image(self, filepath):
+        print('saving as', filepath)
+        pygame.image.save(self.display, filepath)

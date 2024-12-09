@@ -59,9 +59,16 @@ class Simulation():
         else:
             return p1[0] < p2[0]
 
-    def __init__(self, draw=False):
+    def __init__(self, draw=-1):
         self.space = pymunk.Space()
-        self.draw = Draw() if draw else None
+
+        if draw == -1:
+            self.draw = None
+        elif draw == 0:
+            self.draw = Draw(False)
+        elif draw == 1:
+            self.draw = Draw(True)
+        
 
         self.geometry = {
             'bounds': [

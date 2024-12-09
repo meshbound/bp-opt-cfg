@@ -55,7 +55,12 @@ if __name__ == '__main__':
 
     naive_positions_path = '{}naive_positions.csv'.format(root_dir)
     if os.path.exists(naive_positions_path):
-        naive_positions = np.genfromtxt(naive_positions_path, delimiter=',')
+        naive_positions_raw = np.genfromtxt(naive_positions_path, delimiter=',')
+
+        naive_positions = np.array([
+            naive_positions_raw[:, ::2].flatten(), 
+            naive_positions_raw[:, 1::2].flatten()
+        ])
 
         plt.figure(3)
 
@@ -72,6 +77,11 @@ if __name__ == '__main__':
     informed_positions_path = '{}informed_positions.csv'.format(root_dir)
     if os.path.exists(informed_positions_path):
         informed_positions = np.genfromtxt(informed_positions_path, delimiter=',')
+
+        informed_positions = np.array([
+            informed_positions[:, ::2].flatten(), 
+            naive_positions[:, 1::2].flatten()
+        ])
 
         plt.figure(4)
 
