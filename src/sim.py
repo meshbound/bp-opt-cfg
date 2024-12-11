@@ -148,7 +148,7 @@ class Simulation():
             if point is None or (point is not None and Simulation.is_closest_point(bottom_point, point, player)):
                 point = bottom_point
         if mid_hit:
-            mid_point = np.array([mid_hit.point.x + BALL_RADIUS*(-1 if player == 2 else 1), mid_hit.point.y])
+            mid_point = np.array([mid_hit.point.x + BALL_RADIUS*player, mid_hit.point.y])
             if point is None or (point is not None and Simulation.is_closest_point(mid_point, point, player)):
                 point = mid_point
 

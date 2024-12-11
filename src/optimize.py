@@ -45,13 +45,14 @@ class Optimize():
         return np.count_nonzero(intersect_matrix)
 
     @staticmethod
-    def get_naive_fitness(solution, samples_per_action):
+    def get_naive_fitness(solution, opponent_samples):
         positions = Optimize.unpack_positions(solution)
         intersect_count = Optimize.get_intersect_count(positions)
 
+        total_actions = 0
         total_score = 0
 
-        for _ in range(samples_per_action):
+        for _ in range(opponent_samples):
             sim_init_state = {
                 'p1' : {'sunk': 'init', 'pos': util.random_pos(True)},
                 'p2' : {'sunk': None, 'pos': util.random_pos(False)},
@@ -71,12 +72,13 @@ class Optimize():
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
             my_sim = Simulation(draw=-1)
-            actions = my_sim.actions(sim_init_state, 2) 
+            actions = my_sim.actions(sim_init_state, -1)
+            total_actions += len(actions)
             for dir, origin, power in actions:
-                end_state = my_sim.move(sim_init_state, 2, dir, origin, power)
+                end_state = my_sim.move(sim_init_state, -1, dir, origin, power)
                 total_score += util.eval(end_state)
 
-        averge_score = total_score / (len(actions) * samples_per_action)
+        averge_score = total_score / total_actions
         fitness = averge_score - intersect_count
 
         print('fitness:', fitness)
@@ -85,21 +87,21 @@ class Optimize():
 
     @staticmethod
     def naive_fitness_func(ga_instance, solution, solution_idx):
-        samples_per_action = 4
+        opponent_samples = 4
 
-        fitness = Optimize.get_naive_fitness(solution, samples_per_action)
+        fitness = Optimize.get_naive_fitness(solution, opponent_samples)
 
         return fitness
 
 
     @staticmethod
-    def get_informed_fitness(solution, searches_per_sample, iterations_per_search):
+    def get_informed_fitness(solution, opponent_samples, iteration_limit):
         positions = Optimize.unpack_positions(solution)
         intersect_count = Optimize.get_intersect_count(positions)
 
         total_score = 0
 
-        for _ in range(searches_per_sample):
+        for _ in range(opponent_samples):
             sim_init_state = {
                 'p1' : {'sunk': 'init', 'pos': util.random_pos(True)},
                 'p2' : {'sunk': None, 'pos': util.random_pos(False)},
@@ -122,12 +124,12 @@ class Optimize():
             my_sim = Simulation(draw=-1)
 
             mcts_init_state = State(sim_init_state, my_sim)
-            searcher = MCTS(iteration_limit=iterations_per_search)
+            searcher = MCTS(iteration_limit=iteration_limit)
             searcher.search(initial_state=mcts_init_state)
 
             total_score += searcher.root.totalReward
 
-        averge_score = total_score / (searches_per_sample * iterations_per_search)
+        averge_score = total_score / (opponent_samples * iteration_limit)
         fitness = averge_score - intersect_count
 
         print('fitness:', fitness)
@@ -136,10 +138,10 @@ class Optimize():
 
     @staticmethod
     def informed_fitness_func(ga_instance, solution, solution_idx):
-        searches_per_sample = 4
-        iterations_per_search = 20
+        opponent_samples = 4
+        iteration_limit = 20
 
-        fitness = Optimize.get_informed_fitness(solution, searches_per_sample, iterations_per_search)
+        fitness = Optimize.get_informed_fitness(solution, opponent_samples, iteration_limit)
 
         return fitness
 
@@ -148,6 +150,35 @@ class Optimize():
         for sol_idx in range(offspring.shape[0]):
             for gene_idx in range(offspring.shape[1]):
                 if random.random() > 1 / offspring.shape[1]:
+                    continue
+
+                mean = offspring[sol_idx][gene_idx]
+                std_dev = 32*np.exp(-0.25*ga_instance.generations_completed) + 1
+                lower_bound = ga_instance.gene_space[gene_idx]['low']
+                upper_bound = ga_instance.gene_space[gene_idx]['high']
+
+                dist = truncnorm((lower_bound - mean) / std_dev, (upper_bound - mean) / std_dev, loc=mean, scale=std_dev)
+                sample = dist.rvs()
+
+                # print(std_dev, 'MUTATION!', sol_idx, gene_idx, offspring[sol_idx][gene_idx], sample)
+
+                offspring[sol_idx][gene_idx] = sample
+
+        return offspring
+    
+    @staticmethod
+    def adaptive_mutation_func(offspring, ga_instance):
+        average_fitness, offspring_fitness = ga_instance.adaptive_mutation_population_fitness(offspring)
+
+        for sol_idx in range(offspring.shape[0]):
+            for gene_idx in range(offspring.shape[1]):
+
+                if offspring_fitness[sol_idx] < average_fitness:
+                    mutation_prob = 0.25
+                else:
+                    mutation_prob = 1 / offspring.shape[1]
+
+                if random.random() > mutation_prob:
                     continue
 
                 mean = offspring[sol_idx][gene_idx]
@@ -232,7 +263,7 @@ class Optimize():
             num_generations=num_generations,
             num_parents_mating=num_parents_mating,
             fitness_func=Optimize.naive_fitness_func,
-            mutation_type=Optimize.mutation_func,
+            mutation_type=Optimize.adaptive_mutation_func,
             sol_per_pop=sol_per_pop,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,
@@ -254,7 +285,7 @@ class Optimize():
             num_generations=num_generations,
             num_parents_mating=num_parents_mating,
             fitness_func=Optimize.informed_fitness_func,
-            mutation_type=Optimize.mutation_func,
+            mutation_type=Optimize.adaptive_mutation_func,
             sol_per_pop=sol_per_pop,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,

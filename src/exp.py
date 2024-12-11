@@ -9,7 +9,7 @@ out_dir = './data/'
 def gen_naive_data():
     print('naive data')
 
-    num_runs = 9
+    num_runs = 10
 
     gen_per_run = 25
     sol_pop = 75
@@ -33,7 +33,7 @@ def gen_naive_data():
 def gen_informed_data():
     print('informed data')
     
-    num_runs = 1
+    num_runs = 10
 
     gen_per_run = 25
     sol_pop = 75

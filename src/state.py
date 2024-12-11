@@ -13,7 +13,7 @@ class State(BaseState):
     def __init__(self, sim_state, simulation):
         self.sim_state = sim_state
         self.simulation = simulation
-        self.current_player = 2
+        self.current_player = -1
         self.depth = 0
         self.actions = None
 
@@ -40,7 +40,7 @@ class State(BaseState):
         )
 
         new_state = State(sim_state, self.simulation)
-        new_state.current_player = 1 if self.current_player == 2 else 2
+        new_state.current_player *= -1
         new_state.depth = self.depth + 1
         
         return new_state
