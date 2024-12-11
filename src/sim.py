@@ -252,6 +252,13 @@ class Simulation():
             for power in [500000, 750000, 1000000]:
                 actions.append((dir,origin,power))
 
+        if len(actions) == 0:
+            theta = random.random()*2*np.pi
+            dir = (np.cos(theta), np.sin(theta))
+            origin = util.random_pos(player, True)
+            power = 1000000
+            actions.append((dir,origin,power))
+
         return actions
 
     def get_ball(self, label):

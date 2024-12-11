@@ -3,8 +3,11 @@ from const import *
 from scipy.stats import gaussian_kde
 from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as plt
+import scienceplots
 import numpy as np
 import os
+
+plt.style.use('science')
 
 if __name__ == '__main__':
     
@@ -30,7 +33,7 @@ if __name__ == '__main__':
 
         plt.xlabel('Generation')
         plt.ylabel('Fitness')
-        plt.savefig('{}naive_fitness.png'.format(out_dir))
+        plt.savefig('{}naive_fitness.png'.format(out_dir), dpi=300)
 
     informed_fitness_path = '{}informed_fitness.csv'.format(root_dir)
     if os.path.exists(informed_fitness_path):
@@ -49,7 +52,7 @@ if __name__ == '__main__':
 
         plt.xlabel('Generation')
         plt.ylabel('Fitness')
-        plt.savefig('{}informed_fitness.png'.format(out_dir))
+        plt.savefig('{}informed_fitness.png'.format(out_dir), dpi=300)
 
     # Positions by generation
 
@@ -72,15 +75,15 @@ if __name__ == '__main__':
         plt.colorbar(label='Density')
         plt.xlabel('X')
         plt.ylabel('Y')
-        plt.savefig('{}naive_positions.png'.format(out_dir))
+        plt.savefig('{}naive_positions.png'.format(out_dir), dpi=300)
 
     informed_positions_path = '{}informed_positions.csv'.format(root_dir)
     if os.path.exists(informed_positions_path):
-        informed_positions = np.genfromtxt(informed_positions_path, delimiter=',')
+        informed_positions_raw = np.genfromtxt(informed_positions_path, delimiter=',')
 
         informed_positions = np.array([
-            informed_positions[:, ::2].flatten(), 
-            naive_positions[:, 1::2].flatten()
+            informed_positions_raw[:, ::2].flatten(), 
+            informed_positions_raw[:, 1::2].flatten()
         ])
 
         plt.figure(4)
@@ -93,7 +96,7 @@ if __name__ == '__main__':
         plt.colorbar(label='Density')
         plt.xlabel('X')
         plt.ylabel('Y')
-        plt.savefig('{}informed_positions.png'.format(out_dir))
+        plt.savefig('{}informed_positions.png'.format(out_dir), dpi=300)
 
 
     # MCTS eval by final solution
@@ -114,4 +117,4 @@ if __name__ == '__main__':
         plt.yticks([1,2],['Naive', 'Informed'])
         plt.xlabel('Fitness')
         
-        plt.savefig('{}mcts_final.png'.format(out_dir))
+        plt.savefig('{}mcts_final.png'.format(out_dir), dpi=300)

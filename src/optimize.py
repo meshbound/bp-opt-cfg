@@ -70,7 +70,7 @@ class Optimize():
                 '14' : {'sunk': None, 'pos': util.random_pos(False)},
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
-            my_sim = Simulation(draw=0)
+            my_sim = Simulation(draw=-1)
             actions = my_sim.actions(sim_init_state, 2) 
             for dir, origin, power in actions:
                 end_state = my_sim.move(sim_init_state, 2, dir, origin, power)
@@ -79,7 +79,7 @@ class Optimize():
         averge_score = total_score / (len(actions) * samples_per_action)
         fitness = averge_score - intersect_count
 
-        # print('fitness:', fitness)
+        print('fitness:', fitness)
 
         return fitness
 
@@ -119,7 +119,7 @@ class Optimize():
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
             
-            my_sim = Simulation(draw=0)
+            my_sim = Simulation(draw=-1)
 
             mcts_init_state = State(sim_init_state, my_sim)
             searcher = MCTS(iteration_limit=iterations_per_search)
@@ -130,7 +130,7 @@ class Optimize():
         averge_score = total_score / (searches_per_sample * iterations_per_search)
         fitness = averge_score - intersect_count
 
-        # print('fitness:', fitness)
+        print('fitness:', fitness)
 
         return fitness
 

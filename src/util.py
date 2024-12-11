@@ -12,8 +12,11 @@ def pretty_print_state(state):
             out += '\t' + key + '\t: ' + str(val) + '\n'
     print(out)
 
-def random_pos(p1):
-    (x0, y0), (x1, y1) = P1_BOUNDS if p1 else P2_BOUNDS
+def random_pos(p1, shoot=False):
+    if not shoot:
+        (x0, y0), (x1, y1) = P1_BOUNDS if p1 else P2_BOUNDS
+    else:
+        (x0, y0), (x1, y1) = P1_SHOOT_BOUNDS if p1 else P2_SHOOT_BOUNDS
 
     pos = (x0 + random.random() * (x1 - x0), y0 + random.random() * (y1 - y0))
 
