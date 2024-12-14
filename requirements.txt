@@ -2,4 +2,3 @@ pymunk >= 6.9.0
 pygame >= 2.6.1
 pygad >= 3.3.1
 monte-carlo-tree-search >= 2.0.5
-scienceplots >= 2.1.1

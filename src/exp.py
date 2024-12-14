@@ -11,16 +11,16 @@ def gen_naive_data():
 
     num_runs = 10
 
-    gen_per_run = 25
-    sol_pop = 75
+    gen_per_run = 20
+    sol_pop = 80
 
     for _ in range(num_runs):
 
-        solution, _, stats = Optimize.naive_approach(gen_per_run, 2, sol_pop)
+        solution, _, gen_fitness = Optimize.naive_approach(gen_per_run, 2, sol_pop)
 
         with open('{}naive_fitness.csv'.format(out_dir), 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(stats['gen_fitness'])
+            writer.writerow(gen_fitness)
             f.close()
 
         with open('{}naive_positions.csv'.format(out_dir), 'a') as f:
@@ -28,23 +28,21 @@ def gen_naive_data():
             writer.writerow(solution)
             f.close()
 
-    pass
-
 def gen_informed_data():
     print('informed data')
     
     num_runs = 10
 
-    gen_per_run = 25
-    sol_pop = 75
+    gen_per_run = 20
+    sol_pop = 80
 
     for _ in range(num_runs):
 
-        solution, _, stats = Optimize.informed_approach(gen_per_run, 2, sol_pop)
+        solution, _, gen_fitness = Optimize.informed_approach(gen_per_run, 2, sol_pop)
 
         with open('{}informed_fitness.csv'.format(out_dir), 'a') as f:
             writer = csv.writer(f)
-            writer.writerow(stats['gen_fitness'])
+            writer.writerow(gen_fitness)
             f.close()
 
         with open('{}informed_positions.csv'.format(out_dir), 'a') as f:
@@ -56,10 +54,10 @@ def mcts_naive_final():
     print('mcts naive final')
 
     const.PLAYOUT_DEPTH_LIMIT = 10
-    searches_per_sample = 5
+    searches_per_sample = 10
     iterations_per_search = 50
 
-    # for each solution we run a MCTS to get the fitness
+    # For each solution we run MCTS to get the fitness
     naive_positions_path = '{}naive_positions.csv'.format(out_dir)
     naive_positions = np.genfromtxt(naive_positions_path, delimiter=',')
 
@@ -77,10 +75,10 @@ def mcts_informed_final():
     print('mcts informed final')
 
     const.PLAYOUT_DEPTH_LIMIT = 10
-    searches_per_sample = 5
+    searches_per_sample = 10
     iterations_per_search = 50
 
-    # for each solution we run a MCTS to get the fitness
+    # For each solution we run MCTS to get the fitness
     informed_positions_path = '{}informed_positions.csv'.format(out_dir)
     informed_positions = np.genfromtxt(informed_positions_path, delimiter=',')
 

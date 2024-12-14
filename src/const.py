@@ -1,3 +1,4 @@
+# Simulation Visuals
 BALL_APPEARANCE = {
     'p1': {'color': (255, 255, 255), 'draw_stripe': False, 'draw_label': False},
     'p2': {'color': (255, 255, 255), 'draw_stripe': False, 'draw_label': False},
@@ -17,7 +18,6 @@ BALL_APPEARANCE = {
     '15' : {'color': (128, 0, 0), 'draw_stripe': True, 'draw_label': True}
 }
 
-# table
 WINDOW_WIDTH, WINDOW_HEIGHT = 600, 400
 TABLE_WIDTH, TABLE_HEIGHT = 478, 232
        
@@ -98,7 +98,7 @@ MARK_RIGHT_3_POS = (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HE
 (WINDOW_WIDTH//2 + TABLE_WIDTH//2 + TABLE_BEZEL//2, WINDOW_HEIGHT//2 + TABLE_HEIGHT//4)
 
 
-# sim
+# Simulation Logic
 SIM_SPEED = 1
 FPS=60
 
@@ -121,5 +121,37 @@ P2_BOUNDS = ((5*TABLE_WIDTH//8, BALL_RADIUS), (TABLE_WIDTH - BALL_RADIUS, TABLE_
 P1_SHOOT_BOUNDS = ((BALL_RADIUS, BALL_RADIUS), (TABLE_WIDTH//8, TABLE_HEIGHT - BALL_RADIUS))
 P2_SHOOT_BOUNDS = ((7*TABLE_WIDTH//8, BALL_RADIUS), (TABLE_WIDTH - BALL_RADIUS, TABLE_HEIGHT - BALL_RADIUS))
 
-# mcts
+
+# Optimization
 PLAYOUT_DEPTH_LIMIT = 4
+
+NAIVE_MUTATION_PROB = {
+    'steepness': 2.0,
+    'offset': -2.5,
+    'above_avg_prob': 1/14
+}
+
+INFORMED_MUTATION_PROB = {
+    'steepness': 2.5,
+    'offset': -2.5,
+    'above_avg_prob': 1/14
+}
+
+NAIVE_MUTATION_SD = {
+    'steepness': -0.3,
+    'offset': 1,
+    'scale': 40,
+    'minimum': 5
+}
+
+INFORMED_MUTATION_SD = {
+    'steepness': -0.3,
+    'offset': 1,
+    'scale': 25,
+    'minimum': 20
+}
+
+PENALTY_MULT = {
+    'steepness': 0.25,
+    'offset': 0
+}
