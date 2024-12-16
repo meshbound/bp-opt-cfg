@@ -102,16 +102,22 @@ def fig_mcts_final():
         naive_mcts_final = np.genfromtxt(naive_mcts_final_path, delimiter=',')
         informed_mcts_final = np.genfromtxt(informed_mcts_final_path, delimiter=',')
 
-        plt.figure(5)
+        fig = plt.figure(5)
 
-        plt.boxplot([naive_mcts_final, informed_mcts_final], vert=False, patch_artist=True, 
-                boxprops=dict(facecolor='lightblue', color='black'),
-                whiskerprops=dict(color='black', linewidth=1.5),
-                flierprops=dict(marker='o', color='red', markersize=5),
-                widths=[0.3,0.3])
-        plt.yticks([1,2],['Naive', 'Informed'])
-        plt.xlabel('Fitness')
-        
+        ax = fig.add_subplot(111)
+        ax.set_aspect(2)
+
+        bplot = ax.boxplot([naive_mcts_final, informed_mcts_final], vert=True, patch_artist=True, widths=[0.5,0.5])
+
+        for patch, color in zip(bplot['boxes'], ['lightblue','salmon']):
+            patch.set_facecolor(color)
+
+        for median in bplot['medians']:
+            median.set_color('black')
+
+        plt.xticks([1,2],['Naive', 'Informed'])
+        plt.ylabel('Fitness')
+
         plt.savefig('{}mcts_final.png'.format(OUT_DIR), dpi=300)
 
 def fig_mutation_prob_helper(steepness, offset, above_avg_prob, fig, name):

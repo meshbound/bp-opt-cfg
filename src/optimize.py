@@ -127,7 +127,7 @@ class Optimize():
                 '15' : {'sunk': None, 'pos': util.random_pos(False)}
             }
             
-            my_sim = Simulation(draw=-1)
+            my_sim = Simulation(draw=0)
 
             mcts_init_state = State(sim_init_state, my_sim)
             searcher = MCTS(iteration_limit=iteration_limit)

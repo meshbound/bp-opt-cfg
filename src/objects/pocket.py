@@ -23,4 +23,4 @@ class Pocket():
         space.add(self.body, self.shape)
 
     def step(self):
-        pass  
+        pass
