@@ -293,7 +293,7 @@ class Optimize():
             keep_elitism=3,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,
-            parallel_processing=['process', 12],
+            parallel_processing=['process', multiprocessing.cpu_count()],
             on_generation=Optimize.on_gen
         )
 
@@ -313,7 +313,7 @@ class Optimize():
             keep_elitism=1,
             num_genes=len(GENE_SPACE),
             gene_space=GENE_SPACE,
-            parallel_processing=['process', 12],
+            parallel_processing=['process', multiprocessing.cpu_count()],
             on_generation=Optimize.on_gen
         )
 
